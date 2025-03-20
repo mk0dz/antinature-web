@@ -19,7 +19,7 @@ export default function Home() {
 
       
       {/* Hero Section (Right Side on Desktop, Top on Mobile) */}
-      <div className="w-full md:w-2/3 p-20 overflow-auto">
+      <div className="w-full md:w-2/3 p-20 overflow-auto relative">
         <link href="https://fonts.googleapis.com/css2?family=Chivo+Mono:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet"></link>
         <link href="https://fonts.googleapis.com/css2?family=Wix+Madefor+Display:wght@400..800&display=swap" rel="stylesheet"></link>
         <h1 style={{fontFamily: 'Wix Madefor Display'}} className="text-6xl font-thin mb-6">Dirac&apos;s</h1>
