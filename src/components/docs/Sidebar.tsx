@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -9,24 +11,40 @@ interface SidebarItem {
 
 const sidebarItems: SidebarItem[] = [
   {
+    title: 'Overview',
+    href: '/docs/overview',
+  },
+  
+  {
     title: 'Getting Started',
     href: '/docs/getting-started',
   },
   {
     title: 'Theory',
     href: '/docs/theory',
-    items: [
-      { title: 'Quantum Framework', href: '/docs/theory/quantum-framework' },
-      { title: 'Hamiltonians', href: '/docs/theory/hamiltonians' },
-      // Add more as needed
-    ],
   },
   {
     title: 'Tutorials',
-    href: '/docs/tutorials',
+    href: '/docs/Tutorials',
     items: [
-      { title: 'Introduction to Antimatter', href: '/docs/tutorials/intro-to-antimatter' },
-      // Add more as needed
+      { title: '1. Introduction to Antimatter', href: '/tutorials/01_intro_to_antimatter' },
+      { title: '2. Working with Positronium', href: '/tutorials/02_working_with_positronium' },
+      { title: '3. Advanced Basis Sets', href: '/tutorials/03_advanced_basis_sets' },
+      { title: '4. Relativistic Effects', href: '/tutorials/04_relativistic_effects' },
+      { title: '5. Quantum Computing', href: '/tutorials/05_quantum_computing' },
+    ],
+  },
+  {
+    title: 'Examples',
+    href: '/docs/examples',
+    items: [
+      { title: '1. HeH System', href: '/examples/01_heh' },
+      { title: '2. LiH System', href: '/examples/02_lih' },
+      { title: '3. Complex Molecules', href: '/examples/03_complex_molecule' },
+      { title: '4. Hydrogen', href: '/examples/04_hydrogen' },
+      { title: '5. Positronium ESE', href: '/examples/05_positronium_ese' },
+      { title: '6. Positronium GSE', href: '/examples/06_positronium_gse' },
+      { title: '7. Annihilation Rates', href: '/examples/07_anhilation_rates' },
     ],
   },
   {
@@ -34,13 +52,14 @@ const sidebarItems: SidebarItem[] = [
     href: '/docs/howtos',
   },
   {
-    title: 'Examples',
-    href: '/docs/examples',
+    title:'Contributor Guide',
+    href: '/docs/contibuterguide',
   },
   {
-    title: 'API Reference',
-    href: '/docs/api',
+    title:'Release Notes',
+    href: '/docs/releasenotes',
   },
+  
 ];
 
 export default function Sidebar() {
@@ -48,7 +67,7 @@ export default function Sidebar() {
 
   const renderSidebarItems = (items: SidebarItem[], level = 0) => {
     return items.map((item) => {
-      const isActive = pathname === item.href;
+      const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
       const hasChildren = item.items && item.items.length > 0;
       
       return (
