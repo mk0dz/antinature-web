@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Documentation System
 
-## Getting Started
+This documentation system is designed to render markdown files and Jupyter notebooks from the `content` directory.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Renders Markdown (`.md` and `.mdx`) files
+- Renders Jupyter Notebooks (`.ipynb`) files
+- Automatically generates navigation sidebar based on content structure
+- Classic black and white theme with clean typography
+
+## Content Structure
+
+Place your documentation content in the `content` directory. The system will automatically parse the directory structure to create the navigation sidebar.
+
+Example structure:
+```
+content/
+├── getting-started.md
+├── tutorials/
+│   ├── tutorial1.md
+│   └── tutorial2.ipynb
+└── api/
+    ├── endpoints.md
+    └── authentication.md
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Markdown Frontmatter
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You can use frontmatter to add metadata to your markdown files:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```md
+---
+title: Getting Started
+description: Learn how to get started with our product
+order: 1
+---
 
-## Learn More
+# Getting Started
 
-To learn more about Next.js, take a look at the following resources:
+Content goes here...
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The supported frontmatter fields are:
+- `title`: Page title (used in navigation and page header)
+- `description`: Short description (used in cards and meta tags)
+- `order`: Number to sort items in the navigation (lower numbers appear first)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Jupyter Notebooks
 
-## Deploy on Vercel
+Jupyter notebooks are automatically converted to documentation pages. The system:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Extracts the title from the first markdown cell with a H1 heading
+2. Renders markdown cells as-is
+3. Formats code cells with syntax highlighting
+4. Displays cell outputs (text and images)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Development
+
+To run the documentation system locally:
+
+```bash
+npm install
+npm run dev
+```
+
+Then visit http://localhost:3000/docs
+
+## Customization
+
+- Edit `app/docs/layout.tsx` to modify the documentation layout
+- Edit `components/MDXContent.tsx` to customize the rendering of markdown content
+- Edit `components/Sidebar.tsx` to customize the navigation sidebar
+- Edit `src/app/globals.css` to adjust the styling
+
+## Dependencies
+
+This system relies on:
+- Next.js
+- Tailwind CSS
+- next-mdx-remote
+- rehype/remark plugins for markdown processing
+
+## Adding New Content
+
+To add new content:
+
+1. Create a new markdown or Jupyter notebook file in the `content` directory
+2. The file will automatically appear in the navigation sidebar
+3. Use frontmatter to control the title and ordering
