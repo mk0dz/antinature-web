@@ -127,15 +127,110 @@ body {
     font-size: 0.9rem; /* Smaller font size for mobile */
     overflow-x: auto; /* Allow horizontal scrolling */
     padding: 1rem; /* Add padding for better touch targets */
+    margin: 1rem 0;
+    max-width: 100%;
   }
 
   code {
     font-size: 0.9rem; /* Smaller font size for inline code */
+    word-break: break-word;
   }
 
   /* Additional styles for other elements if needed */
   body {
-    padding: 1rem; /* Add padding to body for mobile */
+    padding: 0; /* Remove padding on small screens for full width */
+  }
+  
+  /* Documentation specific responsive adjustments */
+  .mdx-content h1 {
+    font-size: 1.8rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .mdx-content h2 {
+    font-size: 1.5rem;
+    margin-top: 1.2rem;
+    margin-bottom: 0.8rem;
+  }
+  
+  .mdx-content h3 {
+    font-size: 1.3rem;
+    margin-top: 1rem;
+    margin-bottom: 0.6rem;
+  }
+  
+  .mdx-content p, .mdx-content ul, .mdx-content ol {
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+  
+  .mdx-content img {
+    height: auto !important;
+    max-width: 100% !important;
+  }
+  
+  .mdx-content table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  
+  .notebook-output {
+    padding: 0.75rem;
+  }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+  pre {
+    font-size: 0.8rem;
+    padding: 0.75rem;
+  }
+  
+  code {
+    font-size: 0.8rem;
+  }
+  
+  .mdx-content h1 {
+    font-size: 1.6rem;
+  }
+  
+  .mdx-content h2 {
+    font-size: 1.3rem;
+  }
+  
+  .mdx-content h3 {
+    font-size: 1.1rem;
+  }
+  
+  .mdx-content p, .mdx-content ul, .mdx-content ol {
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  
+  /* Documentation header adjustments for very small screens */
+  header nav {
+    justify-content: space-between;
+    width: 100%;
+  }
+  
+  header nav a {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 360px) {
+  header nav a {
+    padding: 0.25rem;
+    font-size: 0.65rem;
+  }
+  
+  input[type="search"] {
+    padding-left: 1.75rem;
+    font-size: 0.75rem;
   }
 }
 

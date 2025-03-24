@@ -89,7 +89,7 @@ export default function DocSearch() {
   };
 
   return (
-    <div ref={searchRef} className="relative w-full max-w-md">
+    <div ref={searchRef} className="relative w-full">
       <SearchIcon className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
       <input
         type="search"
@@ -98,35 +98,35 @@ export default function DocSearch() {
         onKeyDown={handleKeyDown}
         onFocus={() => query && setIsOpen(true)}
         placeholder="Search documentation..."
-        className="h-10 w-full rounded-none border border-gray-300 bg-white pl-8 pr-4 text-sm focus:border-gray-500 focus:outline-none"
+        className="h-8 sm:h-10 w-full rounded-none border border-gray-300 bg-white pl-8 pr-4 text-xs sm:text-sm focus:border-gray-500 focus:outline-none"
       />
 
       {isOpen && (
-        <div className="absolute top-full z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg">
+        <div className="absolute top-full z-50 mt-1 w-full max-w-full rounded-md border border-gray-200 bg-white shadow-lg">
           {isLoading ? (
-            <div className="p-4 text-sm text-gray-500">Searching...</div>
+            <div className="p-2 sm:p-4 text-xs sm:text-sm text-gray-500">Searching...</div>
           ) : error ? (
-            <div className="p-4 text-sm text-red-500">{error}</div>
+            <div className="p-2 sm:p-4 text-xs sm:text-sm text-red-500">{error}</div>
           ) : results.length > 0 ? (
-            <ul className="max-h-80 overflow-auto">
+            <ul className="max-h-48 sm:max-h-60 md:max-h-80 overflow-auto">
               {results.map((result, index) => (
                 <li key={index} className="border-b border-gray-100 last:border-0">
                   <Link
                     href={result.href}
-                    className="block p-3 hover:bg-gray-50"
+                    className="block p-2 sm:p-3 hover:bg-gray-50"
                     onClick={() => {
                       setIsOpen(false);
                       setQuery("");
                     }}
                   >
-                    <div className="text-sm font-medium text-black">{result.title}</div>
-                    <div className="mt-1 text-xs text-gray-500">{result.excerpt}</div>
+                    <div className="text-xs sm:text-sm font-medium text-black">{result.title}</div>
+                    <div className="mt-1 text-xs text-gray-500 hidden sm:block">{result.excerpt}</div>
                   </Link>
                 </li>
               ))}
             </ul>
           ) : (
-            <div className="p-4 text-sm text-gray-500">No results found</div>
+            <div className="p-2 sm:p-4 text-xs sm:text-sm text-gray-500">No results found</div>
           )}
         </div>
       )}
