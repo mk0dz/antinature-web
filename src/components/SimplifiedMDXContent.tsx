@@ -1,12 +1,25 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import 'katex/dist/katex.min.css';
 import katex from 'katex';
+import mermaid from 'mermaid';
+
+// Initialize mermaid with default settings
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'default',
+  securityLevel: 'loose',
+  flowchart: {
+    htmlLabels: true,
+    curve: 'linear',
+  },
+  fontSize: 14, // Smaller font size by default
+});
 
 interface SimplifiedMDXContentProps {
   content: string;
@@ -20,38 +33,123 @@ const MathText = ({
   text: string, 
   mathExpressions: {[key: string]: string} 
 }) => {
-  // Check if this is a math placeholder
-  if (text.startsWith('DISPLAY_MATH_') && mathExpressions[text]) {
+  if (!text) return null;
+
+  // Try to match any math placeholders in the text
+  const displayMathRegex = /DISPLAY_MATH_\d+/g;
+  const inlineMathRegex = /INLINE_MATH_\d+/g;
+  
+  // Check if this text node contains any math placeholders
+  const containsDisplayMath = displayMathRegex.test(text);
+  const containsInlineMath = inlineMathRegex.test(text);
+  
+  // If there's no math, just return the text as is
+  if (!containsDisplayMath && !containsInlineMath) {
+    return <>{text}</>;
+  }
+  
+  // For a simple case where the text is just a placeholder
+  if (text.match(/^(DISPLAY_MATH_\d+|INLINE_MATH_\d+)$/)) {
+    const isDisplay = text.startsWith('DISPLAY_MATH_');
+    const formula = mathExpressions[text];
+    
+    if (!formula) {
+      console.error(`Math expression not found for placeholder: ${text}`);
+      return <span className="math-error text-red-600">Missing math: {text}</span>;
+    }
+    
     try {
-      const html = katex.renderToString(mathExpressions[text], {
-        displayMode: true,
+      const html = katex.renderToString(formula, {
+        displayMode: isDisplay,
         throwOnError: false,
         strict: false
       });
-      // Return the HTML as a string with a special marker for later replacement
-      return <span data-math-display="true" dangerouslySetInnerHTML={{ __html: html }} />;
+      
+      if (isDisplay) {
+        return (
+          <div className="math-display my-4 text-center">
+            <span dangerouslySetInnerHTML={{ __html: html }} />
+          </div>
+        );
+      } else {
+        return <span className="math-inline" dangerouslySetInnerHTML={{ __html: html }} />;
+      }
     } catch (err) {
-      console.error('Error rendering display math:', err);
-      return <span className="math-error">Error rendering: {mathExpressions[text]}</span>;
+      console.error(`Error rendering ${isDisplay ? 'display' : 'inline'} math:`, err);
+      return (
+        <span className="math-error text-red-600">
+          Error rendering math: {formula || text}
+        </span>
+      );
     }
   }
   
-  if (text.startsWith('INLINE_MATH_') && mathExpressions[text]) {
-    try {
-      const html = katex.renderToString(mathExpressions[text], {
-        displayMode: false,
-        throwOnError: false, 
-        strict: false
-      });
-      return <span className="math-inline" dangerouslySetInnerHTML={{ __html: html }} />;
-    } catch (err) {
-      console.error('Error rendering inline math:', err);
-      return <span className="math-error">Error rendering: {mathExpressions[text]}</span>;
+  // For more complex cases where the text contains multiple placeholders or mixed content
+  let result: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  
+  // Combined regex to find both types of placeholders
+  const combinedRegex = /(DISPLAY_MATH_\d+|INLINE_MATH_\d+)/g;
+  
+  while ((match = combinedRegex.exec(text)) !== null) {
+    // Add text before the match
+    if (match.index > lastIndex) {
+      result.push(<span key={`text-${lastIndex}`}>{text.substring(lastIndex, match.index)}</span>);
     }
+    
+    // Add the math component
+    const placeholder = match[0];
+    const isDisplay = placeholder.startsWith('DISPLAY_MATH_');
+    const formula = mathExpressions[placeholder];
+    
+    if (!formula) {
+      result.push(
+        <span key={`placeholder-${match.index}`} className="math-error text-red-600">
+          Missing math: {placeholder}
+        </span>
+      );
+    } else {
+      try {
+        const html = katex.renderToString(formula, {
+          displayMode: isDisplay,
+          throwOnError: false,
+          strict: false
+        });
+        
+        if (isDisplay) {
+          result.push(
+            <div key={`math-${match.index}`} className="math-display my-4 text-center">
+              <span dangerouslySetInnerHTML={{ __html: html }} />
+            </div>
+          );
+        } else {
+          result.push(
+            <span 
+              key={`math-${match.index}`} 
+              className="math-inline" 
+              dangerouslySetInnerHTML={{ __html: html }} 
+            />
+          );
+        }
+      } catch (err) {
+        result.push(
+          <span key={`error-${match.index}`} className="math-error text-red-600">
+            Error rendering math: {formula}
+          </span>
+        );
+      }
+    }
+    
+    lastIndex = match.index + match[0].length;
   }
   
-  // Regular text, just return it
-  return <>{text}</>;
+  // Add any remaining text
+  if (lastIndex < text.length) {
+    result.push(<span key={`text-${lastIndex}`}>{text.substring(lastIndex)}</span>);
+  }
+  
+  return <>{result}</>;
 };
 
 // Custom paragraph component to handle math expressions
@@ -71,19 +169,166 @@ const CustomParagraph = ({
   });
   
   // Use a div instead of p to avoid HTML nesting issues
+  return <div className="mb-4 text-base leading-7">{processedChildren}</div>;
+};
+
+// Text component to process any text node in markdown
+const CustomText = ({ 
+  children, 
+  mathExpressions 
+}: { 
+  children: React.ReactNode, 
+  mathExpressions: {[key: string]: string} 
+}) => {
+  if (typeof children === 'string') {
+    return <MathText text={children} mathExpressions={mathExpressions} />;
+  }
+  return <>{children}</>;
+};
+
+// Mermaid component to render diagrams
+const MermaidDiagram = ({ content }: { content: string }) => {
+  const mermaidRef = useRef<HTMLDivElement>(null);
+  const [diagram, setDiagram] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
+  const [scale, setScale] = useState<number>(0.8); // Start with 80% size
+  const [isPanning, setIsPanning] = useState<boolean>(false);
+  const [position, setPosition] = useState<{ x: number, y: number }>({ x: 0, y: 0 });
+  const [startPanPosition, setStartPanPosition] = useState<{ x: number, y: number }>({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (mermaidRef.current) {
+      try {
+        // Don't re-initialize here, just render
+        mermaid.render(`mermaid-${Date.now()}`, content)
+          .then(({ svg }) => {
+            setDiagram(svg);
+            setError(null);
+          })
+          .catch((err) => {
+            console.error('Mermaid rendering error:', err);
+            setError(`Error rendering diagram: ${err.message}`);
+          });
+      } catch (err: any) {
+        console.error('Mermaid rendering error:', err);
+        setError(`Error rendering diagram: ${err.message}`);
+      }
+    }
+  }, [content, mermaidRef]);
+
+  const handleZoomIn = () => {
+    setScale(prevScale => Math.min(prevScale + 0.1, 2.0)); // Max zoom: 200%
+  };
+
+  const handleZoomOut = () => {
+    setScale(prevScale => Math.max(prevScale - 0.1, 0.3)); // Min zoom: 30%
+  };
+
+  const handleReset = () => {
+    setScale(0.8);
+    setPosition({ x: 0, y: 0 });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 0) { // Left mouse button
+      setIsPanning(true);
+      setStartPanPosition({ x: e.clientX - position.x, y: e.clientY - position.y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning) {
+      setPosition({
+        x: e.clientX - startPanPosition.x,
+        y: e.clientY - startPanPosition.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsPanning(false);
+  };
+
+  if (error) {
+    return (
+      <div className="mermaid-error p-4 bg-red-50 border border-red-200 rounded text-red-600">
+        <p className="font-bold">Diagram Error</p>
+        <p>{error}</p>
+        <pre className="mt-2 p-2 bg-gray-100 overflow-auto text-sm">{content}</pre>
+      </div>
+    );
+  }
+
   return (
-    <div className="mb-4 text-base leading-7">
-      {processedChildren.map((child, index) => {
-        // Check if this is a display math element and apply proper styling
-        if (React.isValidElement(child) && child.props['data-math-display']) {
-          return (
-            <div key={index} className="math-display my-4">
-              {React.cloneElement(child)}
-            </div>
-          );
-        }
-        return child;
-      })}
+    <div className="mermaid-container my-6 relative">
+      <div className="zoom-controls absolute top-0 right-0 bg-white border border-gray-200 rounded p-1 z-10 flex space-x-1">
+        <button 
+          onClick={handleZoomIn} 
+          className="p-1 hover:bg-gray-100 rounded"
+          title="Zoom in"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="11" y1="8" x2="11" y2="14"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+        </button>
+        <button 
+          onClick={handleZoomOut} 
+          className="p-1 hover:bg-gray-100 rounded"
+          title="Zoom out"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+        </button>
+        <button 
+          onClick={handleReset} 
+          className="p-1 hover:bg-gray-100 rounded"
+          title="Reset view"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+          </svg>
+        </button>
+      </div>
+      <div className="mermaid-wrapper overflow-hidden border border-gray-200 rounded" style={{ 
+        height: '500px', 
+        maxHeight: '80vh',
+        position: 'relative',
+        backgroundColor: '#fff'
+      }}>
+        <div 
+          className="mermaid-diagram cursor-move absolute"
+          style={{ 
+            transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+            transformOrigin: 'center center',
+            transition: isPanning ? 'none' : 'transform 0.2s ease',
+            minWidth: '100%',
+            minHeight: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          ref={mermaidRef}
+          dangerouslySetInnerHTML={{ __html: diagram }}
+        />
+      </div>
+      <div className="text-center text-xs text-gray-500 mt-2">
+        Zoom: {Math.round(scale * 100)}% • Click and drag to pan • Use controls to zoom
+      </div>
     </div>
   );
 };
@@ -93,6 +338,34 @@ export default function SimplifiedMDXContent({ content }: SimplifiedMDXContentPr
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [mathExpressions, setMathExpressions] = useState<{[key: string]: string}>({});
+  const [showDebugInfo, setShowDebugInfo] = useState<boolean>(false);
+
+  const insertTestMath = () => {
+    // Create a test math expression
+    const testMathExps: {[key: string]: string} = {
+      'INLINE_MATH_0': '\\alpha',
+      'INLINE_MATH_1': 'c',
+      'INLINE_MATH_2': '\\delta(x)',
+      'DISPLAY_MATH_0': 'E = mc^2',
+      'DISPLAY_MATH_1': '\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}'
+    };
+    
+    // Update state with test expressions
+    setMathExpressions(testMathExps);
+    // Create test content with placeholders
+    setSanitizedContent(
+      '# Math Test\n\n' +
+      'Here are some inline math examples: INLINE_MATH_0 is the fine structure constant, ' +
+      'INLINE_MATH_1 is the speed of light, and INLINE_MATH_2 is the Dirac delta function.\n\n' +
+      'And here is a display math example:\n\n' +
+      'DISPLAY_MATH_0\n\n' +
+      'Another beautiful equation:\n\n' +
+      'DISPLAY_MATH_1'
+    );
+    
+    // Show debug info automatically
+    setShowDebugInfo(true);
+  };
 
   useEffect(() => {
     if (!content) {
@@ -144,7 +417,7 @@ export default function SimplifiedMDXContent({ content }: SimplifiedMDXContentPr
       const placeholder = `DISPLAY_MATH_${displayMathCounter}`;
       mathExps[placeholder] = expr.trim();
       displayMathCounter++;
-      return placeholder;
+      return placeholder; // Return just the placeholder without extra characters
     });
     
     // Extract inline math ($...$)
@@ -153,7 +426,7 @@ export default function SimplifiedMDXContent({ content }: SimplifiedMDXContentPr
       const placeholder = `INLINE_MATH_${inlineMathCounter}`;
       mathExps[placeholder] = expr.trim();
       inlineMathCounter++;
-      return placeholder;
+      return placeholder; // Return just the placeholder without extra characters
     });
     
     // Fix problematic table cells like empty cells
@@ -224,6 +497,7 @@ export default function SimplifiedMDXContent({ content }: SimplifiedMDXContentPr
     
     console.log('Sanitization complete with math extraction');
     console.log(`Extracted ${displayMathCounter} display math and ${inlineMathCounter} inline math expressions`);
+    console.log('Math expressions:', mathExps);
     return { sanitized, mathExps };
   }
 
@@ -363,6 +637,41 @@ export default function SimplifiedMDXContent({ content }: SimplifiedMDXContentPr
 
   return (
     <div className="mdx-content">
+      <div className="flex justify-end mb-2 space-x-2">
+        <button 
+          onClick={insertTestMath}
+          className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded"
+        >
+          Test Math Rendering
+        </button>
+        <button 
+          onClick={() => setShowDebugInfo(!showDebugInfo)}
+          className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded"
+        >
+          {showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
+        </button>
+      </div>
+      
+      {showDebugInfo && (
+        <div className="mb-4 p-3 bg-gray-100 rounded text-xs font-mono overflow-auto max-h-60">
+          <h3 className="font-bold mb-1">Math Expressions ({Object.keys(mathExpressions).length}):</h3>
+          <div className="mb-2">
+            {Object.entries(mathExpressions).map(([key, value], index) => (
+              <div key={index} className="mb-1 pb-1 border-b border-gray-200">
+                <strong>{key}:</strong> "{value}"
+              </div>
+            ))}
+          </div>
+          <h3 className="font-bold mt-2 mb-1">Content Check:</h3>
+          <div className="mb-2">
+            <div>Display Math Placeholders: {sanitizedContent.match(/DISPLAY_MATH_\d+/g)?.length || 0}</div>
+            <div>Inline Math Placeholders: {sanitizedContent.match(/INLINE_MATH_\d+/g)?.length || 0}</div>
+          </div>
+          <h3 className="font-bold mt-2 mb-1">Sanitized Content Preview:</h3>
+          <pre className="whitespace-pre-wrap">{sanitizedContent.substring(0, 300)}...</pre>
+        </div>
+      )}
+      
       <div className="markdown-body">
         {(() => {
           try {
@@ -385,9 +694,20 @@ export default function SimplifiedMDXContent({ content }: SimplifiedMDXContentPr
                   ol: (props) => <ol className="mb-4 ml-6 list-decimal" {...props} />,
                   li: (props) => <li className="mb-1" {...props} />,
                   
+                  // Text component for all text nodes
+                  text: ({ children }) => (
+                    <CustomText mathExpressions={mathExpressions}>{children}</CustomText>
+                  ),
+                  
                   // Code components
                   code: ({ inline, className, children, ...props }) => {
                     const match = /language-(\w+)/.exec(className || '');
+                    
+                    // Handle Mermaid diagrams
+                    if (!inline && match && match[1] === 'mermaid') {
+                      return <MermaidDiagram content={String(children).replace(/\n$/, '')} />;
+                    }
+                    
                     return !inline && match ? (
                       <SyntaxHighlighter
                         language={match[1]}

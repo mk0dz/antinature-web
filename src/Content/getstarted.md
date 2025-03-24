@@ -34,106 +34,158 @@ Here's a simple example to calculate the ground state of positronium:
 ```python
 import numpy as np
 from antinature.core.molecular_data import MolecularData
-from antinature.utils import create_antinature_calculation
+from antinature.core.basis import MixedMatterBasis
 
 # Create a positronium system
 positronium = MolecularData.positronium()
+print(f"Created positronium system")
 
-# Run a basic calculation
-result = create_antinature_calculation(
+# Create a basis set for positronium
+basis = MixedMatterBasis()
+basis.create_positronium_basis()
+print(f"Created and configured basis set for positronium")
+
+# Import SCF solver and other components
+from antinature.core.integral_engine import AntinatureIntegralEngine
+from antinature.core.hamiltonian import AntinatureHamiltonian
+from antinature.core.scf import AntinatureSCF
+
+# Create integral engine
+integral_engine = AntinatureIntegralEngine()
+
+# Create and build Hamiltonian
+hamiltonian = AntinatureHamiltonian(
     positronium,
-    basis_options={'quality': 'high'},
-    calculation_options={'include_annihilation': True}
+    basis,
+    integral_engine,
+    include_annihilation=True
+)
+hamiltonian_dict = hamiltonian.build_hamiltonian()
+
+# Run SCF calculation
+scf = AntinatureSCF(
+    hamiltonian=hamiltonian_dict,
+    basis_set=basis,
+    molecular_data=positronium
 )
 
-# Print results
+# Solve the SCF equations
+result = scf.solve_scf()
 print(f"Ground state energy: {result['energy']:.6f} Hartree")
-print(f"Annihilation rate: {result['annihilation_rate']:.6e} s^-1")
 ```
 
 ### Working with Mixed Matter-Antimatter Systems
 
-For more complex systems involving both matter and antimatter:
+For systems involving both matter and antimatter:
 
 ```python
+import numpy as np
 from antinature.core.molecular_data import MolecularData
-from antinature.utils import create_mixed_system
+from antinature.core.basis import MixedMatterBasis
+from antinature.core.integral_engine import AntinatureIntegralEngine
+from antinature.core.hamiltonian import AntinatureHamiltonian
+from antinature.core.scf import AntinatureSCF
+from antinature.core.correlation import AntinatureCorrelation
+
+# Define atoms and their positions
+atoms = [('H', np.array([0.0, 0.0, 0.0]))]
 
 # Create a system with a hydrogen atom and a positron
 h_plus_positron = MolecularData(
-    atoms=["H"],
-    coordinates=np.array([[0.0, 0.0, 0.0]]),
-    antimatter_particles=["e+"],
-    antimatter_coordinates=np.array([[0.0, 0.0, 1.0]]),  # 1 Å from the H atom
-    charge=0,  # System is neutral: proton + electron + positron
-    multiplicity=2  # Doublet state
+    atoms=atoms,                                # (symbol, position) tuples
+    n_electrons=1,                              # Number of electrons
+    n_positrons=1,                              # Number of positrons 
+    charge=0,                                   # Overall charge
+    multiplicity=2,                             # Doublet state
+    name="H_Positron",                          # Name for the system
+    description="Hydrogen atom with a positron" # Description
 )
 
-# Run calculation
-result = create_antinature_calculation(
-    h_plus_positron,
-    basis_options={
-        'electron_basis': 'aug-cc-pVDZ',
-        'positron_basis': 'positron-aug-cc-pVDZ'
-    },
-    calculation_options={
-        'scf_method': 'rhf',
-        'correlation_method': 'mp2',
-        'include_relativistic': True
-    }
-)
+# Create a basis set for the mixed system
+basis = MixedMatterBasis()
+# Setup the basis for this mixed system - pass atoms list, not the MolecularData object
+basis.create_for_molecule(atoms)
 
-# Analyze results
-print(f"Binding energy: {result['binding_energy']:.6f} eV")
-print(f"Positron density at nucleus: {result['positron_density'][0]:.6e}")
+# Create an integral engine
+integral_engine = AntinatureIntegralEngine()
+
+# Create a Hamiltonian and build it
+hamiltonian = AntinatureHamiltonian(
+    h_plus_positron, 
+    basis, 
+    integral_engine, 
+    include_annihilation=True
+)
+hamiltonian_dict = hamiltonian.build_hamiltonian()
+
+# Run SCF calculation
+scf = AntinatureSCF(
+    hamiltonian=hamiltonian_dict,
+    basis_set=basis,
+    molecular_data=h_plus_positron
+)
+scf_result = scf.solve_scf()
+print(f"SCF energy: {scf_result['energy']:.6f} Hartree")
+
+# Run MP2 correlation calculation
+correlation = AntinatureCorrelation(
+    scf_result=scf_result,
+    hamiltonian=hamiltonian_dict,
+    basis_set=basis
+)
+mp2_result = correlation.calculate_correlation_energy(method='mp2', include_electron_positron=True)
+print(f"MP2 correlation energy: {mp2_result['correlation_energy']:.6f} Hartree")
+print(f"Total MP2 energy: {scf_result['energy'] + mp2_result['correlation_energy']:.6f} Hartree")
 ```
 
 ## Setting Up Calculation Parameters
-
-### Choosing Basis Sets
-
-Antinature provides specialized basis sets for antimatter particles:
-
-```python
-from antinature.core.basis import get_basis_options
-
-# List available basis sets
-all_bases = get_basis_options()
-print("Available electron basis sets:", all_bases['electron'])
-print("Available positron basis sets:", all_bases['positron'])
-
-# Use a specific basis set combination
-calculation_result = create_antinature_calculation(
-    molecule,
-    basis_options={
-        'electron_basis': 'cc-pVTZ',
-        'positron_basis': 'positron-cc-pVTZ',
-        'explicit_correlation': True  # Add explicit e-p correlation terms
-    }
-)
-```
 
 ### Configuring Hamiltonian Options
 
 Customize the physics included in your calculation:
 
 ```python
-from antinature.core.hamiltonian import create_hamiltonian
+from antinature.core.molecular_data import MolecularData
+from antinature.core.basis import MixedMatterBasis
+from antinature.core.hamiltonian import AntinatureHamiltonian
+from antinature.core.integral_engine import AntinatureIntegralEngine
+from antinature.core.scf import AntinatureSCF
+
+# Create a molecule first
+molecule = MolecularData.positronium()
+print(f"Created positronium system")
+
+# Create a basis set - for positronium we can use the dedicated method
+basis = MixedMatterBasis()
+basis.create_positronium_basis()
+print(f"Created and configured basis set for positronium")
+
+# Create an integral engine
+integral_engine = AntinatureIntegralEngine()
+print(f"Created integral engine")
 
 # Create a specialized Hamiltonian
-hamiltonian = create_hamiltonian(
+hamiltonian = AntinatureHamiltonian(
     molecule,
+    basis,
+    integral_engine,
     include_annihilation=True,
-    annihilation_cutoff=1e-6,
-    include_relativistic=True,
-    relativistic_order='second'  # First or second order corrections
+    include_relativistic=True  # Include relativistic corrections
 )
+print(f"Created Hamiltonian with specialized options")
+
+# Build and get the Hamiltonian dictionary
+hamiltonian_dict = hamiltonian.build_hamiltonian()
+print(f"Built Hamiltonian matrices")
 
 # Use in calculation
-result = create_antinature_calculation(
-    molecule,
-    custom_hamiltonian=hamiltonian
+scf = AntinatureSCF(
+    hamiltonian=hamiltonian_dict, 
+    basis_set=basis, 
+    molecular_data=molecule
 )
+result = scf.solve_scf()
+print(f"Energy: {result['energy']:.6f} Hartree")
 ```
 
 ## Visualization and Analysis
@@ -141,21 +193,58 @@ result = create_antinature_calculation(
 Antinature includes tools for analyzing and visualizing results:
 
 ```python
-from antinature.utils import plot_density, calculate_lifetime
+import matplotlib.pyplot as plt
+from antinature.core.molecular_data import MolecularData
+from antinature.core.basis import MixedMatterBasis
+from antinature.core.scf import AntinatureSCF
+from antinature.core.integral_engine import AntinatureIntegralEngine
+from antinature.core.hamiltonian import AntinatureHamiltonian
+from antinature.specialized.visualization import AntinatureVisualizer
 
-# Plot electron and positron densities
-plot_density(result, particle_type='electron', plane='xy', resolution=100)
-plot_density(result, particle_type='positron', plane='xy', resolution=100)
+# Create molecule
+molecule = MolecularData.positronium()
+print(f"Created positronium system")
 
-# Calculate annihilation lifetime
-lifetime = calculate_lifetime(result)
-print(f"Predicted lifetime: {lifetime:.2f} nanoseconds")
+# Create a basis set - for positronium we use the dedicated method
+basis = MixedMatterBasis()
+basis.create_positronium_basis()
+print(f"Created and configured basis set for positronium")
+
+# Create integral engine and Hamiltonian
+integral_engine = AntinatureIntegralEngine()
+hamiltonian = AntinatureHamiltonian(molecule, basis, integral_engine)
+print(f"Created integral engine and Hamiltonian")
+
+# Build and get the Hamiltonian dictionary
+hamiltonian_dict = hamiltonian.build_hamiltonian()
+print(f"Built Hamiltonian matrices")
+
+# Run SCF calculation
+scf = AntinatureSCF(
+    hamiltonian=hamiltonian_dict,
+    basis_set=basis, 
+    molecular_data=molecule
+)
+result = scf.solve_scf()
+print(f"Energy: {result['energy']:.6f} Hartree")
+
+# Create visualizer with molecule and result
+visualizer = AntinatureVisualizer(molecule, result)
+print(f"Created visualizer")
+
+# Plot electron density
+visualizer.plot_density(particle_type='electron', plane='xy', resolution=100)
+plt.savefig('electron_density.png')
+print(f"Electron density plot saved to 'electron_density.png'")
 ```
+
+**Note:** values maybe comeup zero because of partial setup visit and explore core examples [Examples](/docs/examples/01_anti_heh)
 
 ## Next Steps
 
-- Check the [Examples](examples.md) for more complex use cases
-- Review the [Tutorials](tutorials.md) for step-by-step guides
-- Explore the [How-To Guides](howtos.md) for specific tasks
+- Check the [Examples](/docs/examples/01_anti_heh) for more complex use cases
+- Review the [Tutorials](tutorials/01_intro_to_antimatter) for step-by-step guides
+- Explore the [How-To Guides](howtos) for specific tasks
 
 For more detailed information on the theory behind Antinature, see the [Theory](theory.md) section. 
+
