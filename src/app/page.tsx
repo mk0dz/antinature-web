@@ -78,7 +78,7 @@ export default function Home() {
                 from antinature.specialized import PositroniumSCF <br />
                 from antinature.core import MolecularData <br />
             </code>
-          <a href="https://doi.org/10.5281/zenodo.15079747"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.15079747.svg" alt="DOI"></a>
+            <a href="https://doi.org/10.5281/zenodo.15079747"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.15079747.svg" alt="DOI" className='w-10 h-10'></img></a>
         </pre>
         <Image 
           src="/qiskitcite.svg"
@@ -87,7 +87,6 @@ export default function Home() {
           height={29}
           className='items-end justify-end p-2 mt-2 max-w-full'
         />
-        
       </div>
       
 
