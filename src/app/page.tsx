@@ -86,6 +86,7 @@ export default function Home() {
           height={29}
           className='items-end justify-end p-2 mt-2 max-w-full'
         />
+        <a href="https://doi.org/10.5281/zenodo.15079747"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.15079747.svg" alt="DOI"></a>
       </div>
       
 
