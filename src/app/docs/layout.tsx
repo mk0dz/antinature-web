@@ -37,7 +37,7 @@ export default function DocsLayout({
                 Documentation
               </Link>
               <Link
-                href="https://github.com/mukulDeep-01"
+                href="https://github.com/mk0dz/antinature"
                 target="_blank"
                 className="text-xs sm:text-sm font-medium hover:text-gray-600 whitespace-nowrap px-1"
               >
