@@ -94,7 +94,7 @@ export default function Home() {
       <div className="relative w-full md:w-1/3 h-64 md:h-auto">
       
         <Image 
-          src="/dirac.jpg"
+          src="/dirac.png"
           alt="Paul Dirac"
           layout="fill"
           objectFit="cover"
